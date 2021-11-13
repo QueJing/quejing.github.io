@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="本文图片和内容摘自罗升阳的博客《SEAndroid安全机制框架分析》">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SEAndroid 相关知识">
+<meta property="og:url" content="http://example.com/2020/09/08/SEAndroid-%E7%9B%B8%E5%85%B3%E7%9F%A5%E8%AF%86/index.html">
+<meta property="og:site_name" content="点滴">
+<meta property="og:description" content="本文图片和内容摘自罗升阳的博客《SEAndroid安全机制框架分析》">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2020/09/08/SEAndroid-%E7%9B%B8%E5%85%B3%E7%9F%A5%E8%AF%86/SEAndroid%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E6%A1%86%E6%9E%B6.png">
+<meta property="og:image" content="http://example.com/2020/09/08/SEAndroid-%E7%9B%B8%E5%85%B3%E7%9F%A5%E8%AF%86/SELinux%E5%AE%89%E5%85%A8%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E6%B5%81%E7%A8%8B.png">
+<meta property="og:image" content="http://example.com/2020/09/08/SEAndroid-%E7%9B%B8%E5%85%B3%E7%9F%A5%E8%AF%86/%E5%9F%BA%E4%BA%8E%E5%AE%89%E5%85%A8%E7%BA%A7%E5%88%AB%E7%9A%84MAC%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E6%95%B0%E6%8D%AE%E6%B5%81.png">
+<meta property="article:published_time" content="2020-09-08T11:52:30.000Z">
+<meta property="article:modified_time" content="2020-09-08T12:34:40.439Z">
+<meta property="article:author" content="QueJing">
+<meta property="article:tag" content="学习笔记, C, Java">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2020/09/08/SEAndroid-%E7%9B%B8%E5%85%B3%E7%9F%A5%E8%AF%86/SEAndroid%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E6%A1%86%E6%9E%B6.png">
+
+<link rel="canonical" href="http://example.com/2020/09/08/SEAndroid-%E7%9B%B8%E5%85%B3%E7%9F%A5%E8%AF%86/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>SEAndroid 相关知识 | 点滴</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">点滴</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">5</span></a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2020/09/08/SEAndroid-%E7%9B%B8%E5%85%B3%E7%9F%A5%E8%AF%86/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="QueJing">
+      <meta itemprop="description" content="个人学习笔记">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="点滴">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          SEAndroid 相关知识
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-09-08 19:52:30 / 修改时间：20:34:40" itemprop="dateCreated datePublished" datetime="2020-09-08T19:52:30+08:00">2020-09-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Android/" itemprop="url" rel="index"><span itemprop="name">Android</span></a>
+                </span>
+            </span>
+
+          
+            <div class="post-description">本文图片和内容摘自罗升阳的博客《SEAndroid安全机制框架分析》</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>本文图片和内容摘自罗升阳的博客<a target="_blank" rel="noopener" href="https://blog.csdn.net/Luoshengyang/article/details/37613135">《SEAndroid安全机制框架分析》</a></p>
+<p>如需了解详细内容，请访问原博客。</p>
+<h2 id="1-整体框架"><a href="#1-整体框架" class="headerlink" title="1. 整体框架"></a>1. 整体框架</h2><center><img src="/2020/09/08/SEAndroid-%E7%9B%B8%E5%85%B3%E7%9F%A5%E8%AF%86/SEAndroid%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E6%A1%86%E6%9E%B6.png" class="" title="SEAndroid安全机制框架"></center>
+<center>SEAndroid安全机制框架</center>
+
+<p>SEAndroid安全机制包含有内核空间和用户空间两部分支持：</p>
+<ul>
+<li>在内核空间，主要涉及到一个称为SELinux LSM的模块</li>
+<li>在用户空间，涉及到Security Context、Security Server和SEAndroid Policy</li>
+</ul>
+<h2 id="2-内核空间"><a href="#2-内核空间" class="headerlink" title="2. 内核空间"></a>2. 内核空间</h2><p>与SELinux Security Server相关的一个内核子模块是LSM，全称是Linux Security Model，这个模块包含有一个访问向量缓冲（Access Vector Cache）和一个安全服务（Security Server）。Security Server负责安全访问控制逻辑，即由它来决定一个主体访问一个客体是否是合法的。这里说的主体一般就是指进程，而客体就是主体要访问的资源，例如文件。</p>
+<p>SELinux与LSM和内核中的子系统交互过程如下：</p>
+<p>首先，SELinux会在LSM中注册相应的回调函数；其次，LSM会在相应的内核对象子系统中会加入一些Hook代码。例如，我们调用系统接口read函数来读取一个文件的时候，就会进入到内核的文件子系统中。在文件子系统中负责读取文件函数vfs_read就会 调用LSM加入的Hook代码。这些Hook代码就会调用之前SELinux注册进来的回调函数，以便后者可以进行安全检查。</p>
+<p>SELinux在进行安全检查的时候，首先是看一下自己的Access Vector Cache是否已经有结果。如果有的话，就直接将结果返回给相应的内核子系统就可以了。如果没有的话，就需要到Security Server中去进行检查。检查出来的结果在返回给相应的内核子系统的同时，也会保存在自己的Access Vector Cache中，以便下次可以快速地得到检查结果。</p>
+<center><img src="/2020/09/08/SEAndroid-%E7%9B%B8%E5%85%B3%E7%9F%A5%E8%AF%86/SELinux%E5%AE%89%E5%85%A8%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6%E6%B5%81%E7%A8%8B.png" class="" title="SELinux安全访问控制流程"></center>
+<center>SELinux安全访问控制流程</center>
+
+<p>内核中的资源在访问的过程中，一般需要获得三次检查通过：</p>
+<ul>
+<li>一般性错误检查，例如访问的对象是否存在、访问参数是否正确等。</li>
+<li>DAC检查，即基于Linux UID/GID的安全检查。</li>
+<li>SELinux检查，即基于安全上下文和安全策略的安全检查。</li>
+</ul>
+<h2 id="3-用户空间"><a href="#3-用户空间" class="headerlink" title="3. 用户空间"></a>3. 用户空间</h2><p>在用户空间中，SEAndroid包含有三个主要的模块，分别是安全上下文（Security Context）、安全策略（SEAndroid Policy）和安全服务（Security Server）。</p>
+<h3 id="3-1-安全上下文"><a href="#3-1-安全上下文" class="headerlink" title="3.1 安全上下文"></a>3.1 安全上下文</h3><p>安全上下文实际上就是一个附加在对象上的标签（Tag）。这个标签实际上就是一个字符串，它由四部分内容组成，分别是SELinux用户、SELinux角色、类型、安全级别，每一个部分都通过一个冒号来分隔，格式为“user:role:type:sensitivity”。</p>
+<p>在开启了SEAndroid安全机制的设备上执行带-Z选项的ls命令，就可以看到一个文件的安全上下文：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta"># ls -Z init.rc</span></span><br><span class="line">u:object_r:rootfs:s0 init.rc init.rc</span><br></pre></td></tr></table></figure>
+<p>在安全上下文标签的四个部分中，只有类型（Type）才是最重要的，SELinux用户、SELinux角色和安全级别都几乎可以忽略不计的。正因为如此，SEAndroid安全机制又称为是基于TE（Type Enforcement）策略的安全机制。</p>
+<h4 id="3-1-1-用户和角色"><a href="#3-1-1-用户和角色" class="headerlink" title="3.1.1 用户和角色"></a>3.1.1 用户和角色</h4><p>对于进程来说，SELinux用户和SELinux角色只是用来限制进程可以标注的类型。而对于文件来说，SELinux用户和SELinux角色就可以完全忽略不计。为了完整地描述一个文件的安全上下文，通常将它的SELinux角色固定为object_r，而将它的SELinux用户设置为创建它的进程的SELinux用户。</p>
+<p>在SEAndroid中，只定义了一个SELinux用户u，因此我们通过ps -Z和ls -Z命令看到的所有的进程和文件的安全上下文中的SELinux用户都为u。同时，SEAndroid也只定义了一个SELinux角色r，因此，我们通过ps -Z命令看到的所有进程的安全上下文中的SELinux角色都为r。</p>
+<p>用户定义在<code>system/sepolicy/private/users</code>中，内容如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">user u roles &#123; r &#125; level s0 range s0 - mls_systemhigh;</span><br></pre></td></tr></table></figure>
+
+<p>上述语句声明了一个SELinux用户u，它可用的SELinux角色为r，它的默认安全级别为s0，可用的安全级别范围为s0~mls_systemhigh，其中，mls_systemhigh为系统定义的最高安全级别。</p>
+<p>角色定义在<code>system/sepolicy/private/roles_decl</code>中，内容如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">role r;</span><br></pre></td></tr></table></figure>
+
+<p>上述语句声明了一个SELinux角色r。</p>
+<h4 id="3-1-2-安全级别"><a href="#3-1-2-安全级别" class="headerlink" title="3.1.2 安全级别"></a>3.1.2 安全级别</h4><p>安全级别实际上是一个MAC安全机制，它是建立在TE的基础之上的。在SELinux中，安全级别是可选的，也就是说，可以选择启用或者不启用。</p>
+<p>在基于安全级别的MAC安全机制中，主体（subject）和客体（object）都关联有一个安全级别。其中，安全级别较高的主体可以读取安全级别较低的客体，称为“read down”；而安全级别较低的主体可以写入安全级别较高的客体，称为“write up”。</p>
+<p>通过这种规则，可以允许数据从安全级别较低的主体流向安全级别较高的主体，而限制数据从安全级别较高的主体流向安全级别较低的主体，从而有效地保护了数据。注意，如果主体和客体的安全级别是相同的，那么主体是可以对客体进行读和写的。数据流向如下图所示，我们定义了两个安全级别：PUBLIC和SECRET，其中，SECRET的安全级别高于PUBLIC。</p>
+<center><img src="/2020/09/08/SEAndroid-%E7%9B%B8%E5%85%B3%E7%9F%A5%E8%AF%86/%E5%9F%BA%E4%BA%8E%E5%AE%89%E5%85%A8%E7%BA%A7%E5%88%AB%E7%9A%84MAC%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6%E6%95%B0%E6%8D%AE%E6%B5%81.png" class="" title="基于安全级别的MAC安全机制数据流"></center>
+<center>基于安全级别的MAC安全机制数据流</center>
+
+<p>在实际使用中，安全级别是由敏感性（Sensitivity）和类别（Category）两部分内容组成的，格式为“sensitivity[:category_set]”，其中，category_set是可选的。例如，假设我们定义有s0、s1两个Sensitivity，以c0、c1、c2三个Category，那么“s0:c0,c1”表示的就是Sensitivity为s0、Category为c0和c1的一个安全级别。</p>
+<h4 id="3-1-3-类型"><a href="#3-1-3-类型" class="headerlink" title="3.1.3 类型"></a>3.1.3 类型</h4><p>在SEAndroid中，我们通常将用来标注文件的安全上下文中的类型称为file_type，而用来标注进程的安全上下文的类型称为domain，并且每一个用来描述文件安全上下文的类型都将file_type设置为其属性，每一个用来描述进程安全上下文的类型都将domain设置为其属性。</p>
+<p>将一个类型设置为另一个类型的属性可以通过type语句实现。例如以下语句将类型 domain设置类型init的属性：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">type init domain;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-安全策略"><a href="#3-2-安全策略" class="headerlink" title="3.2 安全策略"></a>3.2 安全策略</h3><p>SEAndroid安全机制中的安全策略是在安全上下文的基础上进行描述的，也就是说，它通过主体和客体的安全上下文，定义主体是否有权限访问客体。</p>
+<p>在system/sepolicy目录中，所有以.te为后缀的文件经过编译之后，就会生成一个sepolicy文件。</p>
+<p>打开某个.te文件，里面会有allow语句。一个Type所具有的权限是通过allow语句来描述的，以下这个allow语句：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">allow unconfineddomain domain:binder &#123; call transfer set_context_mgr &#125;;</span><br></pre></td></tr></table></figure>
+
+<p>表明domain为unconfineddomain的进程可以与其它进程进行binder ipc通信（call），并且能够向这些进程传递Binder对象（transfer），以及将自己设置为Binder上下文管理器（set_context_mgr）。</p>
+<p>SEAndroid使用的是最小权限原则，也就是说，只有通过allow语句声明的权限才是允许的，而其它没有通过allow语句声明的权限都是禁止，这样就可以最大限度地保护系统中的资源。</p>
+<h3 id="3-3-安全服务"><a href="#3-3-安全服务" class="headerlink" title="3.3 安全服务"></a>3.3 安全服务</h3><p>用户空间的Security Server主要是用来保护用户空间资源的，以及用来操作内核空间对象的安全上下文的，它由应用程序安装服务PackageManagerService、应用程序安装守护进程installd、应用程序进程孵化器Zygote进程以及init进程组成。</p>
+<p>PackageManagerService和installd负责创建App数据目录的安全上下文，Zygote进程负责创建App进程的安全上下文，而init进程负责控制系统属性的安全访问。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/09/08/Linux%E4%B8%AD%E7%9A%84module-init%E4%B8%8Emodule-exit/" rel="prev" title="Linux中的module_init与module_exit">
+      <i class="fa fa-chevron-left"></i> Linux中的module_init与module_exit
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%95%B4%E4%BD%93%E6%A1%86%E6%9E%B6"><span class="nav-text">1. 整体框架</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%86%85%E6%A0%B8%E7%A9%BA%E9%97%B4"><span class="nav-text">2. 内核空间</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4"><span class="nav-text">3. 用户空间</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E5%AE%89%E5%85%A8%E4%B8%8A%E4%B8%8B%E6%96%87"><span class="nav-text">3.1 安全上下文</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#3-1-1-%E7%94%A8%E6%88%B7%E5%92%8C%E8%A7%92%E8%89%B2"><span class="nav-text">3.1.1 用户和角色</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-1-2-%E5%AE%89%E5%85%A8%E7%BA%A7%E5%88%AB"><span class="nav-text">3.1.2 安全级别</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-1-3-%E7%B1%BB%E5%9E%8B"><span class="nav-text">3.1.3 类型</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E5%AE%89%E5%85%A8%E7%AD%96%E7%95%A5"><span class="nav-text">3.2 安全策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E5%AE%89%E5%85%A8%E6%9C%8D%E5%8A%A1"><span class="nav-text">3.3 安全服务</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">QueJing</p>
+  <div class="site-description" itemprop="description">个人学习笔记</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">5</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+  <div class="beian"><a href="https://beian.miit.gov.cn/" rel="noopener" target="_blank">闽ICP备15020892号-1 </a>
+      <img src="http://www.beian.gov.cn/portal/download" style="display: inline-block;">
+  </div>
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">QueJing</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

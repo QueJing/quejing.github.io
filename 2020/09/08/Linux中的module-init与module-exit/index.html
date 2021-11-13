@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="Linux内核中的模块初始化和模块移除操作">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux中的module_init与module_exit">
+<meta property="og:url" content="http://example.com/2020/09/08/Linux%E4%B8%AD%E7%9A%84module-init%E4%B8%8Emodule-exit/index.html">
+<meta property="og:site_name" content="点滴">
+<meta property="og:description" content="Linux内核中的模块初始化和模块移除操作">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-09-08T01:27:38.000Z">
+<meta property="article:modified_time" content="2020-09-08T01:46:05.018Z">
+<meta property="article:author" content="QueJing">
+<meta property="article:tag" content="学习笔记, C, Java">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2020/09/08/Linux%E4%B8%AD%E7%9A%84module-init%E4%B8%8Emodule-exit/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Linux中的module_init与module_exit | 点滴</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">点滴</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">5</span></a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2020/09/08/Linux%E4%B8%AD%E7%9A%84module-init%E4%B8%8Emodule-exit/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="QueJing">
+      <meta itemprop="description" content="个人学习笔记">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="点滴">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Linux中的module_init与module_exit
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-09-08 09:27:38 / 修改时间：09:46:05" itemprop="dateCreated datePublished" datetime="2020-09-08T09:27:38+08:00">2020-09-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux%E5%86%85%E6%A0%B8/" itemprop="url" rel="index"><span itemprop="name">Linux内核</span></a>
+                </span>
+            </span>
+
+          
+            <div class="post-description">Linux内核中的模块初始化和模块移除操作</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="1-module-init与module-exit宏"><a href="#1-module-init与module-exit宏" class="headerlink" title="1. module_init与module_exit宏"></a>1. module_init与module_exit宏</h2><p>module_init与module_exit宏定义在<code>include/linux/module.h</code>文件中，部分代码如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> MODULE</span></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * module_init() - driver initialization entry point</span></span><br><span class="line"><span class="comment"> * @x: function to be run at kernel boot time or module insertion</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * module_init() will either be called during do_initcalls() (if</span></span><br><span class="line"><span class="comment"> * builtin) or at module insertion time (if a module).  There can only</span></span><br><span class="line"><span class="comment"> * be one per module.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> module_init(x) __initcall(x);</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * module_exit() - driver exit entry point</span></span><br><span class="line"><span class="comment"> * @x: function to be run when driver is removed</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * module_exit() will wrap the driver clean-up code</span></span><br><span class="line"><span class="comment"> * with cleanup_module() when used with rmmod when</span></span><br><span class="line"><span class="comment"> * the driver is a module.  If the driver is statically</span></span><br><span class="line"><span class="comment"> * compiled into the kernel, module_exit() has no effect.</span></span><br><span class="line"><span class="comment"> * There can only be one per module.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> module_exit(x) __exitcall(x);</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span> <span class="comment">/* MODULE */</span></span></span><br><span class="line">...</span><br><span class="line">...</span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> module_init(initfn)                    \</span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">initcall_t</span> __maybe_unused __inittest(<span class="keyword">void</span>)        \</span><br><span class="line">    &#123; <span class="keyword">return</span> initfn; &#125;                  \</span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">init_module</span><span class="params">(<span class="keyword">void</span>)</span> __<span class="title">attribute__</span><span class="params">((alias(#initfn)))</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* This is only required if you want to be unloadable. */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> module_exit(exitfn)                    \</span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">exitcall_t</span> __maybe_unused __exittest(<span class="keyword">void</span>)        \</span><br><span class="line">    &#123; <span class="keyword">return</span> exitfn; &#125;                  \</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">cleanup_module</span><span class="params">(<span class="keyword">void</span>)</span> __<span class="title">attribute__</span><span class="params">((alias(#exitfn)))</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+<p>宏定义MODULE在静态编译链接时不定义，在动态编译链接时定义。通过Makefile中obj+y（静态编译）或obj+m（动态编译）来区分。</p>
+<h3 id="1-1-静态编译"><a href="#1-1-静态编译" class="headerlink" title="1.1 静态编译"></a>1.1 静态编译</h3><p>当采用静态编译时，module_init定义如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> module_init(x) __initcall(x);</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> module_exit(x) __exitcall(x);</span></span><br></pre></td></tr></table></figure>
+<p>__initcall和__exitcall宏定义在<code>include/linux/init.h</code>中，如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#define __initcall(fn) device_initcall(fn)</span><br><span class="line">#define __exitcall(fn)                     \</span><br><span class="line">    static exitcall_t __exitcall_##fn __exit_call &#x3D; fn</span><br></pre></td></tr></table></figure>
+<p>module_exit宏到此展开完成，当我们调用module_exit(my_exit)时，结果如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">exitcall_t</span> __exitcall_my_exitl = my_exit</span><br></pre></td></tr></table></figure>
+<p>接下来继续对device_initcall展开，device_initcall的宏定义如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> device_initcall(fn)        __define_initcall(fn, 6)</span></span><br></pre></td></tr></table></figure>
+<p>继续对__define_initcall展开，如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __define_initcall(fn, id) \</span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">initcall_t</span> __initcall_name(fn, id) __used \</span><br><span class="line">    __attribute__((__section__(<span class="string">&quot;.initcall&quot;</span> #id <span class="string">&quot;.init&quot;</span>))) = fn;</span><br></pre></td></tr></table></figure>
+<p>__initcall_name展开如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __initcall_name(fn, id)    __initcall_##fn##id</span></span><br></pre></td></tr></table></figure>
+<p>至此，module_init完全展开。</p>
+<p>在静态编译过程中，如果使用module_init(my_init)，结果如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">static initcall_t __initcall_my_init_6 __used __attribute__((__section__(&quot;.initcall6.init&quot;))) &#x3D; my_init</span><br></pre></td></tr></table></figure>
+<p>该语句的作用：定义了一个initcall_t函数指针变量，指针指向自己定义的初始化函数。该指针变量在链接时会被放到section(.initcall6.init)。</p>
+<p>而初始化函数被调用的过程可以参照以下链接：<a target="_blank" rel="noopener" href="https://blog.csdn.net/jzjhome/article/details/72764931">https://blog.csdn.net/jzjhome/article/details/72764931</a></p>
+<h3 id="1-2-动态编译"><a href="#1-2-动态编译" class="headerlink" title="1.2 动态编译"></a>1.2 动态编译</h3><p>当采用动态编译时，module_init和module_exit定义如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> module_init(initfn)                    \</span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">initcall_t</span> __maybe_unused __inittest(<span class="keyword">void</span>)        \</span><br><span class="line">    &#123; <span class="keyword">return</span> initfn; &#125;                  \</span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">init_module</span><span class="params">(<span class="keyword">void</span>)</span> __<span class="title">attribute__</span><span class="params">((alias(#initfn)))</span></span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> module_exit(exitfn)                    \</span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">exitcall_t</span> __maybe_unused __exittest(<span class="keyword">void</span>)        \</span><br><span class="line">    &#123; <span class="keyword">return</span> exitfn; &#125;                  \</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">cleanup_module</span><span class="params">(<span class="keyword">void</span>)</span> __<span class="title">attribute__</span><span class="params">((alias(#exitfn)))</span></span>;</span><br></pre></td></tr></table></figure>
+<p>这两个宏的主要作用就是给输入的函数取别名：将init_module定义为initf函数n的别名，即定义一个init_module变量，指向initfn；将cleanup_module定义为exitfn函数的别名，即定义一个cleanup_module变量，指向exitfn。</p>
+<p>具体的编译和加载过程可以参照以下链接：<a target="_blank" rel="noopener" href="https://blog.csdn.net/yueqian_scut/article/details/46694229">https://blog.csdn.net/yueqian_scut/article/details/46694229</a></p>
+<h2 id="2-其他init宏"><a href="#2-其他init宏" class="headerlink" title="2. 其他init宏"></a>2. 其他init宏</h2><p>除了module_init外，还有一些与init相关的宏定义：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * A &quot;pure&quot; initcall has no dependencies on anything else, and purely</span></span><br><span class="line"><span class="comment"> * initializes variables that couldn&#x27;t be statically initialized.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * This only exists for built-in code, not for modules.</span></span><br><span class="line"><span class="comment"> * Keep main.c:initcall_level_names[] in sync.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> pure_initcall(fn)      __define_initcall(fn, 0)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> core_initcall(fn)      __define_initcall(fn, 1)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> core_initcall_sync(fn)     __define_initcall(fn, 1s)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> postcore_initcall(fn)      __define_initcall(fn, 2)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> postcore_initcall_sync(fn) __define_initcall(fn, 2s)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> arch_initcall(fn)      __define_initcall(fn, 3)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> arch_initcall_sync(fn)     __define_initcall(fn, 3s)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> subsys_initcall(fn)        __define_initcall(fn, 4)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> subsys_initcall_sync(fn)   __define_initcall(fn, 4s)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> fs_initcall(fn)            __define_initcall(fn, 5)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> fs_initcall_sync(fn)       __define_initcall(fn, 5s)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> rootfs_initcall(fn)        __define_initcall(fn, rootfs)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> device_initcall(fn)        __define_initcall(fn, 6)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> device_initcall_sync(fn)   __define_initcall(fn, 6s)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> late_initcall(fn)      __define_initcall(fn, 7)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> late_initcall_sync(fn)     __define_initcall(fn, 7s)</span></span><br></pre></td></tr></table></figure>
+<p>其过程基本类似，只是在链接的过程中会被放到不同的段中，从而导致调用的顺序不一样。调用顺序是从.initcall1.init段到.initcall7.init依次进行的，但在各个子段内，函数的调用顺序与链接顺序相关，所以是不确定的。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/09/08/notifier%E9%80%9A%E7%9F%A5%E9%93%BE%E6%9C%BA%E5%88%B6/" rel="prev" title="notifier通知链机制">
+      <i class="fa fa-chevron-left"></i> notifier通知链机制
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/09/08/SEAndroid-%E7%9B%B8%E5%85%B3%E7%9F%A5%E8%AF%86/" rel="next" title="SEAndroid 相关知识">
+      SEAndroid 相关知识 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-module-init%E4%B8%8Emodule-exit%E5%AE%8F"><span class="nav-text">1. module_init与module_exit宏</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E9%9D%99%E6%80%81%E7%BC%96%E8%AF%91"><span class="nav-text">1.1 静态编译</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E5%8A%A8%E6%80%81%E7%BC%96%E8%AF%91"><span class="nav-text">1.2 动态编译</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%85%B6%E4%BB%96init%E5%AE%8F"><span class="nav-text">2. 其他init宏</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">QueJing</p>
+  <div class="site-description" itemprop="description">个人学习笔记</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">5</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+  <div class="beian"><a href="https://beian.miit.gov.cn/" rel="noopener" target="_blank">闽ICP备15020892号-1 </a>
+      <img src="http://www.beian.gov.cn/portal/download" style="display: inline-block;">
+  </div>
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">QueJing</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

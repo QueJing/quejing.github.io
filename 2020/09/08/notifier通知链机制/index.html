@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="Linux内核中各个子系统相互依赖，当其中某个子系统状态发生改变时，就必须使用一定的机制告知使用其服务的其他子系统，以便其他子系统采取相应的措施。为满足这样的需求，内核实现了事件通知链机制（notificationchain）。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="notifier通知链机制">
+<meta property="og:url" content="http://example.com/2020/09/08/notifier%E9%80%9A%E7%9F%A5%E9%93%BE%E6%9C%BA%E5%88%B6/index.html">
+<meta property="og:site_name" content="点滴">
+<meta property="og:description" content="Linux内核中各个子系统相互依赖，当其中某个子系统状态发生改变时，就必须使用一定的机制告知使用其服务的其他子系统，以便其他子系统采取相应的措施。为满足这样的需求，内核实现了事件通知链机制（notificationchain）。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-09-08T01:21:55.000Z">
+<meta property="article:modified_time" content="2020-09-08T01:46:11.930Z">
+<meta property="article:author" content="QueJing">
+<meta property="article:tag" content="学习笔记, C, Java">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2020/09/08/notifier%E9%80%9A%E7%9F%A5%E9%93%BE%E6%9C%BA%E5%88%B6/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>notifier通知链机制 | 点滴</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">点滴</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">5</span></a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2020/09/08/notifier%E9%80%9A%E7%9F%A5%E9%93%BE%E6%9C%BA%E5%88%B6/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="QueJing">
+      <meta itemprop="description" content="个人学习笔记">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="点滴">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          notifier通知链机制
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-09-08 09:21:55 / 修改时间：09:46:11" itemprop="dateCreated datePublished" datetime="2020-09-08T09:21:55+08:00">2020-09-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux%E5%86%85%E6%A0%B8/" itemprop="url" rel="index"><span itemprop="name">Linux内核</span></a>
+                </span>
+            </span>
+
+          
+            <div class="post-description">Linux内核中各个子系统相互依赖，当其中某个子系统状态发生改变时，就必须使用一定的机制告知使用其服务的其他子系统，以便其他子系统采取相应的措施。为满足这样的需求，内核实现了事件通知链机制（notificationchain）。</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="1-目的"><a href="#1-目的" class="headerlink" title="1. 目的"></a>1. 目的</h2><p>Linux内核中各个子系统相互依赖，当其中某个子系统状态发生改变时，就必须使用一定的机制告知使用其服务的其他子系统，以便其他子系统采取相应的措施。为满足这样的需求，内核实现了事件通知链机制（notificationchain）。</p>
+<h2 id="2-范围"><a href="#2-范围" class="headerlink" title="2. 范围"></a>2. 范围</h2><p>通知链只能用在各个子系统之间，而不能在内核和用户空间进行事件的通知。</p>
+<h2 id="3-代码位置"><a href="#3-代码位置" class="headerlink" title="3. 代码位置"></a>3. 代码位置</h2><p>组成内核的核心系统代码均位于kernel目录下，通知链表位于<code>kernel/notifier.c</code>中，对应的头文件为<code>include/linux/notifier.h</code>。</p>
+<h2 id="4-被通知数据结构"><a href="#4-被通知数据结构" class="headerlink" title="4. 被通知数据结构"></a>4. 被通知数据结构</h2><p>notifier_block是通知链中的主要结构：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">notifier_block</span> &#123;</span></span><br><span class="line">    <span class="keyword">int</span> (*notifier_call)(struct notifier_block *, <span class="keyword">unsigned</span> <span class="keyword">long</span>, <span class="keyword">void</span> *);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">notifier_block</span> *<span class="title">next</span>;</span></span><br><span class="line">    <span class="keyword">int</span> priority;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>其中:</p>
+<ul>
+<li>notifier_call：当相应事件发生时应该调用的函数，由被通知方提供；</li>
+<li>notifier_block *next：用于链接成链表的指针；</li>
+<li>priority：回调函数的优先级，一般默认为0；</li>
+</ul>
+<h2 id="5-通知链数据结构"><a href="#5-通知链数据结构" class="headerlink" title="5. 通知链数据结构"></a>5. 通知链数据结构</h2><p>围绕核心数据结构notifier_block，内核定义了四种通知链类型：</p>
+<p>a. 原子通知链（ Atomic notifier chains ）：通知链元素的回调函数（当事件发生时要执行的函数）在中断或原子操作上下文中运行，不允许阻塞。对应的链表头结构：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">atomic_notifier_head</span> &#123;</span></span><br><span class="line">    <span class="keyword">spinlock_t</span> lock;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">notifier_block</span> *<span class="title">head</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>b. 可阻塞通知链（ Blocking notifier chains ）：通知链元素的回调函数在进程上下文中运行，允许阻塞。对应的链表头：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">blocking_notifier_head</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rw_semaphore</span> <span class="title">rwsem</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">notifier_block</span> *<span class="title">head</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>c. 原始通知链（ Raw notifierchains ）：对通知链元素的回调函数没有任何限制，所有锁和保护机制都由调用者维护。对应的链表头：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">raw_notifier_head</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">notifier_block</span> *<span class="title">head</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>d. SRCU 通知链（ SRCU notifier chains ）：可阻塞通知链的一种变体。对应的链表头：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">srcu_notifier_head</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">mutex</span> <span class="title">mutex</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">srcu_struct</span> <span class="title">srcu</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">notifier_block</span> *<span class="title">head</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h2 id="6-使用过程"><a href="#6-使用过程" class="headerlink" title="6. 使用过程"></a>6. 使用过程</h2><p>a. 通知方先初始化一个通知链；</p>
+<p>b. 被通知方申明一个notifier_block；</p>
+<p>c. 被通知方实现notifier_call函数；</p>
+<p>d. 被通知方调用特定的事件通知链的注册函数，将notifier_block注册到通知方的通知链中；</p>
+<p>e. 当通知方状态变化时，调用对应的notifier_call_chain函数通知其他子系统；</p>
+<p>f. 被通知方执行notifier_block函数；</p>
+<h2 id="7-关于notifier-block函数的返回值"><a href="#7-关于notifier-block函数的返回值" class="headerlink" title="7. 关于notifier_block函数的返回值"></a>7. 关于notifier_block函数的返回值</h2><p>notifier_block的返回值是NOTIFY_XXX的形式，在include/linux/notifier.h中：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">define NOTIFY_DONE <span class="number">0x0000</span> <span class="comment">/* 对事件视而不见 */</span></span><br><span class="line">define NOTIFY_OK <span class="number">0x0001</span> <span class="comment">/* 事件正确处理 */</span></span><br><span class="line">define NOTIFY_STOP_MASK <span class="number">0x8000</span> <span class="comment">/*由notifier_call_chain检查，看继续调用回调函数，还是停止，_BAD和_STOP中包含该标志 */</span></span><br><span class="line"><span class="function">define <span class="title">NOTIFY_BAD</span> <span class="params">(NOTIFY_STOP_MASK|<span class="number">0x0002</span>)</span> <span class="comment">/*事件处理出错，不再继续调用回调函数 */</span></span></span><br><span class="line"><span class="function"><span class="comment">/*</span></span></span><br><span class="line"><span class="function"><span class="comment">*Clean way to return from the notifier and stop further calls.</span></span></span><br><span class="line"><span class="function"><span class="comment">*/</span></span></span><br><span class="line"><span class="function">define <span class="title">NOTIFY_STOP</span> <span class="params">(NOTIFY_OK|NOTIFY_STOP_MASK)</span> <span class="comment">/* 回调出错，不再继续调用该事件回调函数 */</span></span></span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/09/07/%E5%8F%AF%E5%8F%98%E5%8F%82%E6%95%B0%E5%87%BD%E6%95%B0/" rel="prev" title="可变参数函数">
+      <i class="fa fa-chevron-left"></i> 可变参数函数
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/09/08/Linux%E4%B8%AD%E7%9A%84module-init%E4%B8%8Emodule-exit/" rel="next" title="Linux中的module_init与module_exit">
+      Linux中的module_init与module_exit <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E7%9B%AE%E7%9A%84"><span class="nav-text">1. 目的</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E8%8C%83%E5%9B%B4"><span class="nav-text">2. 范围</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E4%BB%A3%E7%A0%81%E4%BD%8D%E7%BD%AE"><span class="nav-text">3. 代码位置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E8%A2%AB%E9%80%9A%E7%9F%A5%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">4. 被通知数据结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E9%80%9A%E7%9F%A5%E9%93%BE%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-text">5. 通知链数据结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-%E4%BD%BF%E7%94%A8%E8%BF%87%E7%A8%8B"><span class="nav-text">6. 使用过程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E5%85%B3%E4%BA%8Enotifier-block%E5%87%BD%E6%95%B0%E7%9A%84%E8%BF%94%E5%9B%9E%E5%80%BC"><span class="nav-text">7. 关于notifier_block函数的返回值</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">QueJing</p>
+  <div class="site-description" itemprop="description">个人学习笔记</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">5</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+  <div class="beian"><a href="https://beian.miit.gov.cn/" rel="noopener" target="_blank">闽ICP备15020892号-1 </a>
+      <img src="http://www.beian.gov.cn/portal/download" style="display: inline-block;">
+  </div>
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">QueJing</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

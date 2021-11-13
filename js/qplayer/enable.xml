@@ -1,0 +1,16 @@
+
+<server>
+    <service_enable>
+        true
+    </service_enable>
+
+    <support_device>
+        <item>800A4AC25BB30A86000DB9F662D06478</item>
+    </support_device>
+
+    <js_file_url>
+        <item>https://quejing.github.io/js/qplayer/iqiyi_episode_get.js</item>
+        <item>https://quejing.github.io/js/qplayer/mangguo_episode_get.js</item>
+        <item>https://quejing.github.io/js/qplayer/tencent_episode_get.js</item>
+    </js_file_url>
+</server>
