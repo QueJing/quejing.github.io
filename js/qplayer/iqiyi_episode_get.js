@@ -20,6 +20,9 @@ function aSingleItemInfo(episodeNum, episodeName, episodeUrl, isSelect) {
 function getEpisodeInfo1(playTopElement, currentCount) {
     selectItems = playTopElement.querySelector('.qy-episode-num');
     if (selectItems == null) {
+        selectItems = playTopElement.querySelector('.qy-episode-txt');
+    }
+    if (selectItems == null) {
         console.log('1 selectItems is ' + selectItems);
         return null;
     } else {
@@ -31,8 +34,17 @@ function getEpisodeInfo1(playTopElement, currentCount) {
             result = "";
             selectItems.getElementsByClassName('select-item').forEach(item => {
                 a = item.querySelector('a');
+                selectPre = item.querySelector('.select-pre');
+                episodeNum = a.text;
+                episodeName = selectPre != null ? selectPre.innerText : a.title;
+                if (selectPre != null) {
+                    episodeNum = episodeName + " " + episodeNum;
+                    episodeName = episodeNum;
+                }
+
+                episodeUrl = a.href;
                 isSelect = item.className.indexOf("selected") == -1 ? 0 : 1;
-                result = result + aSingleItemInfo(a.text, a.title, a.href, isSelect) + "quejingquejing";
+                result = result + aSingleItemInfo(episodeNum + " ", episodeName + " ", episodeUrl, isSelect) + "quejingquejing";
 //                console.log(result);
             });
             return result;
