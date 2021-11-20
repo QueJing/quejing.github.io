@@ -5,7 +5,10 @@
     </service_enable>
 
     <support_device>
+        <!-- 调试手机 -->
         <item>800A4AC25BB30A86000DB9F662D06478</item>
+        <!-- 毛纺路电视 -->
+        <item>FE5B8FCB4CFBB4083DB6A5414C25B568</item>
     </support_device>
 
     <js_file_url>
